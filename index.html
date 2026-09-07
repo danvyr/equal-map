@@ -230,6 +230,8 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
 }
 .ghostbtn:hover{border-color:var(--coast); color:var(--ink)}
 .ghostbtn[disabled]{opacity:.4; cursor:default}
+.footbtns{display:flex; gap:6px; flex:none}
+.ghostbtn.ok{color:var(--p5); border-color:color-mix(in srgb, var(--p5) 45%, transparent)}
 
 /* HUD */
 #hud{
@@ -327,7 +329,10 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
 
   <div class="railfoot">
     <p class="credit">Equal Earth projection &mdash; &Scaron;avri&ccaron;, Patterson &amp; Jenny, 2018.<br><a href="https://equal-earth.com" target="_blank" rel="noopener">equal-earth.com</a> &middot; Boundaries: Natural Earth 1:50m</p>
-    <button class="ghostbtn" id="clearall">Clear</button>
+    <div class="footbtns">
+      <button class="ghostbtn" id="copylink">Copy link</button>
+      <button class="ghostbtn" id="clearall">Clear</button>
+    </div>
   </div>
 </aside>
 
@@ -360,15 +365,18 @@ const borders = topojson.mesh(topo, topo.objects.countries, (a,b)=>a!==b);
 const graticule = d3.geoGraticule().step([20,20])();
 const sphere = {type:"Sphere"};
 
+const slugify = t => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const countries = topojson.feature(topo, topo.objects.countries).features
   .filter(f => f.properties && f.properties.name && d3.geoArea(f) > 2e-7)
   .map(f => {
     const ster = d3.geoArea(f);
-    return { id:String(f.id), name:f.properties.name, feature:f,
+    return { id:String(f.id), slug:slugify(f.properties.name), name:f.properties.name, feature:f,
              home:d3.geoCentroid(f), bounds:d3.geoBounds(f), ster, km2:ster*R_KM*R_KM };
   })
   .sort((a,b)=>a.name.localeCompare(b.name));
 const byName = new Map(countries.map(c=>[c.name.toLowerCase(), c]));
+const bySlug = new Map(countries.map(c=>[c.slug, c]));
 
 /* ── projections ──────────────────────────────────────────────────── */
 const PROJ = {
@@ -738,7 +746,7 @@ function addPlate(country){
   if(state.plates.length >= MAX_PLATES) return null;
   const ci = freeColorIndex();
   const p = {
-    uid:++uid, id:country.id, name:country.name, feature:country.feature,
+    uid:++uid, id:country.id, slug:country.slug, name:country.name, feature:country.feature,
     ster:country.ster, km2:country.km2,
     origin:country.home.slice(), pos:country.home.slice(), spin:0, ci,
     get color(){ return C.plates[this.ci]; }
@@ -748,14 +756,14 @@ function addPlate(country){
   buildCard(p);
   renderEmpty();
   select(p);
-  invalidate();
+  invalidate(); syncHash();
   return p;
 }
 function removePlate(p){
   state.plates = state.plates.filter(x=>x!==p);
   p.ui.root.remove();
   if(state.selected===p) state.selected = state.plates[state.plates.length-1] || null;
-  renderEmpty(); renderResults(); invalidate();
+  renderEmpty(); renderResults(); invalidate(); syncHash();
 }
 function select(p){
   state.selected = p;
@@ -765,7 +773,7 @@ function select(p){
 function moveTo(p, lon, lat){
   p.pos[0] = norm180(lon);
   p.pos[1] = Math.max(-80, Math.min(80, lat));
-  updateGeo(p); invalidate();
+  updateGeo(p); invalidate(); syncHash();
 }
 function goHome(p){ p.spin = 0; moveTo(p, p.origin[0], p.origin[1]); }
 
@@ -857,6 +865,60 @@ function renderEmpty(){
   document.getElementById("clearall").disabled = n === 0;
 }
 
+/* ── shareable link ───────────────────────────────────────────────────
+   #p=<projection>&c=<slug>@<lon>,<lat>[,<spin>];…[&g=0][&t=1]
+   Kept human-readable on purpose: the link says what it restores. */
+let applyingHash = false, hashTimer = null;
+
+function encodeState(){
+  const r = v => String(Math.round(v*10)/10);
+  const out = ["p=" + state.projKey];
+  if(state.plates.length) out.push("c=" + state.plates.map(p => {
+    const sp = Math.round(p.spin);
+    return p.slug + "@" + r(p.pos[0]) + "," + r(p.pos[1]) + (sp ? "," + sp : "");
+  }).join(";"));
+  if(!state.grat)  out.push("g=0");
+  if(state.tissot) out.push("t=1");
+  return "#" + out.join("&");
+}
+function writeHash(){
+  const h = encodeState();
+  if(h === location.hash) return;
+  try { history.replaceState(null, "", location.pathname + location.search + h); }
+  catch(_){ /* replaceState is unavailable on file:// in some browsers */ }
+}
+function syncHash(){
+  if(applyingHash) return;
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(writeHash, 250);        // dragging fires this every frame
+}
+function setToggle(id, key, on){
+  state[key] = on;
+  document.getElementById(id).setAttribute("aria-pressed", String(on));
+}
+function applyHash(hash){
+  const raw = (hash || "").replace(/^#/, "");
+  if(!raw) return false;
+  const q = new URLSearchParams(raw);
+  applyingHash = true;
+  try {
+    const key = q.get("p");
+    setProjection(PROJ[key] ? key : "equalEarth");
+    setToggle("tog-grat",  "grat",   q.get("g") !== "0");
+    setToggle("tog-tissot","tissot", q.get("t") === "1");
+    for(const old of state.plates.slice()) removePlate(old);
+    for(const tok of (q.get("c") || "").split(";")){
+      const m = /^([a-z0-9-]+)@(-?[\d.]+),(-?[\d.]+)(?:,(-?[\d.]+))?$/.exec(tok.trim());
+      if(!m) continue;
+      const c = bySlug.get(m[1]);
+      if(!c) continue;                            // unknown country: skip, keep the rest
+      const pl = addPlate(c);
+      if(pl){ pl.spin = m[4] ? +m[4] : 0; moveTo(pl, +m[2], +m[3]); }
+    }
+  } finally { applyingHash = false; }
+  return true;
+}
+
 /* ── projection controls & verdicts ───────────────────────────────── */
 const projgrid = document.getElementById("projgrid");
 for(const g of GROUPS){
@@ -883,7 +945,7 @@ function setProjection(key){
   for(const q of state.plates) updateGeo(q);
   state.transform = d3.zoomIdentity;
   d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
-  fitBase(); invalidate(true);
+  fitBase(); invalidate(true); syncHash();
 }
 function chip(ok, yes, no){
   return ok ? '<span class="chip yes"><span class="dot"></span>'+yes+'</span>'
@@ -894,9 +956,8 @@ function chip(ok, yes, no){
 function bindToggle(id, key){
   const b = document.getElementById(id);
   b.addEventListener("click", ()=>{
-    state[key] = !state[key];
-    b.setAttribute("aria-pressed", String(state[key]));
-    invalidate(true);
+    setToggle(id, key, !state[key]);
+    invalidate(true); syncHash();
   });
 }
 bindToggle("tog-grat","grat");
@@ -936,6 +997,27 @@ resultsEl.addEventListener("mousedown", e=>{
   e.preventDefault();
   const c = countries.find(x=>x.id===b.dataset.id);
   if(c){ addPlate(c); searchEl.value = ""; searchEl.blur(); }
+});
+
+const copyBtn = document.getElementById("copylink");
+copyBtn.addEventListener("click", async ()=>{
+  clearTimeout(hashTimer); writeHash();                 // flush any pending drag
+  const url = location.href;
+  let ok = true;
+  try { await navigator.clipboard.writeText(url); }
+  catch(_){
+    try {                                               // no clipboard API (http, old browser)
+      const ta = document.createElement("textarea");
+      ta.value = url; ta.setAttribute("readonly","");
+      ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      ok = document.execCommand("copy"); ta.remove();
+    } catch(e){ ok = false; }
+  }
+  copyBtn.textContent = ok ? "Link copied" : "Copy from the address bar";
+  copyBtn.classList.toggle("ok", ok);
+  clearTimeout(copyBtn.t);
+  copyBtn.t = setTimeout(()=>{ copyBtn.textContent = "Copy link"; copyBtn.classList.remove("ok"); }, 1800);
 });
 
 document.getElementById("clearall").addEventListener("click", ()=>{
@@ -1018,7 +1100,7 @@ canvas.addEventListener("pointermove", e => {
     const p = down.plate;
     if(down.rotating || e.shiftKey){
       p.spin = down.spin0 + (pt[0]-down.pt[0])*0.7;
-      updateGeo(p); invalidate();
+      updateGeo(p); invalidate(); syncHash();
     } else {
       const g = projection.invert(pt);
       if(g && isFinite(g[0]))
@@ -1076,8 +1158,8 @@ window.addEventListener("keydown", e => {
     case "ArrowRight": moveTo(p, p.pos[0]+step, p.pos[1]); break;
     case "ArrowUp":    moveTo(p, p.pos[0], p.pos[1]+step); break;
     case "ArrowDown":  moveTo(p, p.pos[0], p.pos[1]-step); break;
-    case "[": p.spin -= 3; updateGeo(p); invalidate(); break;
-    case "]": p.spin += 3; updateGeo(p); invalidate(); break;
+    case "[": p.spin -= 3; updateGeo(p); invalidate(); syncHash(); break;
+    case "]": p.spin += 3; updateGeo(p); invalidate(); syncHash(); break;
     case "h": case "H": goHome(p); break;
     case "Backspace": case "Delete": removePlate(p); break;
     default: hit = false;
@@ -1104,17 +1186,28 @@ new MutationObserver(()=>{ readTheme(); invalidate(true); })
   .observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
 
 resize();
-setProjection("equalEarth");
 
-// Open on the comparison this projection was built to make honest:
-// Greenland — the poster child of map distortion — dropped onto the Congo basin,
-// and India sitting where Greenland actually lives.
-const greenland = byName.get("greenland"), india = byName.get("india");
-if(greenland){ const p = addPlate(greenland); if(p) moveTo(p, 21, 1); }
-if(india && greenland){ const p = addPlate(india); if(p) moveTo(p, greenland.home[0], greenland.home[1]); }
-select(state.plates[0] || null);
-renderEmpty();
-invalidate(true);
+function openingState(){
+  // The comparison this projection was built to make honest: Greenland — the poster
+  // child of map distortion — dropped onto the Congo basin, and India sitting where
+  // Greenland actually lives.
+  setProjection("equalEarth");
+  const greenland = byName.get("greenland"), india = byName.get("india");
+  if(greenland){ const p = addPlate(greenland); if(p) moveTo(p, 21, 1); }
+  if(india && greenland){ const p = addPlate(india); if(p) moveTo(p, greenland.home[0], greenland.home[1]); }
+}
+function boot(hash){
+  if(!applyHash(hash)) openingState();
+  select(state.plates[0] || null);
+  renderEmpty();
+  invalidate(true);
+}
+boot(location.hash);
+writeHash();                       // the address bar is copyable from the first frame
+
+window.addEventListener("hashchange", ()=>{
+  if(!applyingHash) boot(location.hash);
+});
 })();
 </script>
 </body>

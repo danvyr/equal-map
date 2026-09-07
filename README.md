@@ -59,6 +59,35 @@ sends `text/html` with no charset makes the browser fall back to Latin-1, and ev
   [world-atlas](https://github.com/topojson/world-atlas)
 - d3 v7 and topojson 3 load from cdnjs; d3-geo-projection 4 from jsdelivr
 
+## Sharing a view
+
+The address bar always holds the current state, so a view can be copied straight out of
+it — or with the **Copy link** button in the panel footer. The format is deliberately
+readable:
+
+```
+https://truesize.earth/#p=goodeCut&c=brazil@0,0;japan@-100,40&t=1
+```
+
+| key | meaning |
+|---|---|
+| `p` | projection key — `equalEarth`, `mercator`, `peirce`, `goodeCut`, … |
+| `c` | countries, `;`-separated: `<slug>@<lon>,<lat>` plus `,<spin>` when rotated |
+| `g` | `0` to hide the graticule (omitted when on) |
+| `t` | `1` to show distortion ellipses (omitted when off) |
+
+Countries are keyed by a slug of their name rather than an ISO code: the `id` field in
+world-atlas is missing on five entries (Somaliland, Kosovo, N. Cyprus, Indian Ocean
+Ter., Siachen Glacier) and `036` is used twice, so ids are neither complete nor unique.
+All 241 name slugs are unique and URL-safe — and a slug says what it restores.
+
+Coordinates round to 0.1° (~11 km). Updates are debounced 250 ms and written with
+`history.replaceState`, so dragging does not flood the back button. Editing the hash by
+hand — or hitting back — re-boots the view through the same path. An unrecognised
+projection falls back to Equal Earth, and unknown country slugs are skipped rather than
+failing the whole link. Zoom and pan are deliberately not encoded: the pan offset is in
+pixels and would not survive a different window size.
+
 ## Hosting on GitHub Pages at truesize.earth
 
 No server side — one HTML file, three CDN scripts, no runtime fetches, no build step at

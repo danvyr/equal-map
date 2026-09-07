@@ -3,9 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Equal Earth True Size</title>
-<meta name="description" content="Drag any country across 20 map projections and watch area stay true while shape bends.">
+<title>True Size</title>
+<meta name="description" content="Drag any country across 20 map projections — Equal Earth, Mercator, Peirce, Goode — and see what each one distorts: area, shape, or both.">
 <meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<link rel="canonical" href="https://truesize.earth/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="True Size">
+<meta property="og:title" content="True Size">
+<meta property="og:description" content="Drag any country across 20 map projections — Equal Earth, Mercator, Peirce, Goode — and see what each one distorts: area, shape, or both.">
+<meta property="og:url" content="https://truesize.earth/">
+<meta property="og:image" content="https://truesize.earth/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Greenland and India dragged across an Equal Earth map, each reading 1.00 times its true area">
+<meta name="twitter:card" content="summary_large_image">
 <style>:root{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -72,7 +87,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .pad{padding:0 20px}
 
 header.brand{padding:20px 20px 16px; border-bottom:1px solid var(--rule)}
-.wordmark{font-family:var(--f-display); font-size:34px; line-height:.98; letter-spacing:-.01em; margin:0}
+.wordmark{font-family:var(--f-display); font-size:42px; line-height:1; letter-spacing:-.015em; margin:0}
 .wordmark em{font-style:italic}
 .tagline{margin:9px 0 0; color:var(--ink-2); font-size:13px; max-width:34ch}
 .tagline b{font-weight:600; color:var(--ink)}
@@ -220,7 +235,7 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
 
 .railfoot{
   padding:12px 20px 14px; border-top:1px solid var(--rule);
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  display:flex; flex-direction:column; align-items:stretch; gap:9px;
 }
 .credit{font-size:10.5px; color:var(--muted); line-height:1.4}
 .credit a{color:var(--ink-2)}
@@ -280,7 +295,7 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
   }
   #sheetgrab span{display:block; width:36px; height:4px; border-radius:2px; background:var(--rule); margin:0 auto}
   header.brand{padding:6px 20px 14px}
-  .wordmark{font-size:26px}
+  .wordmark{font-size:32px}
   .tagline{display:none}
   .hint{display:none}
   #hud{bottom:auto; top:14px; right:14px}
@@ -297,8 +312,8 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
   <button id="sheetgrab" aria-label="Expand or collapse panel"><span></span></button>
 
   <header class="brand">
-    <h1 class="wordmark">Equal Earth<br><em>True Size</em></h1>
-    <p class="tagline">This projection gets every country's <b>area</b> exactly right. Drag one across the map and watch what it pays for that.</p>
+    <h1 class="wordmark">True <em>Size</em></h1>
+    <p class="tagline">No flat map keeps both <b>size</b> and <b>shape</b>. Drag a country across 20 projections and watch what each one gives up.</p>
     <div class="verdicts" id="verdicts"></div>
   </header>
 
@@ -328,11 +343,13 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
   </div>
 
   <div class="railfoot">
-    <p class="credit">Equal Earth projection &mdash; &Scaron;avri&ccaron;, Patterson &amp; Jenny, 2018.<br><a href="https://equal-earth.com" target="_blank" rel="noopener">equal-earth.com</a> &middot; Boundaries: Natural Earth 1:50m</p>
     <div class="footbtns">
       <button class="ghostbtn" id="copylink">Copy link</button>
       <button class="ghostbtn" id="clearall">Clear</button>
     </div>
+    <p class="credit">Boundaries: Natural Earth 1:50m &middot; projections via d3-geo-projection.<br>
+      Equal Earth is &Scaron;avri&ccaron;, Patterson &amp; Jenny, 2018 &mdash;
+      <a href="https://equal-earth.com" target="_blank" rel="noopener">equal-earth.com</a></p>
   </div>
 </aside>
 

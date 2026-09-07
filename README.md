@@ -59,6 +59,25 @@ sends `text/html` with no charset makes the browser fall back to Latin-1, and ev
   [world-atlas](https://github.com/topojson/world-atlas)
 - d3 v7 and topojson 3 load from cdnjs; d3-geo-projection 4 from jsdelivr
 
+## Icons and social card
+
+The mark is the site's own map: the real Equal Earth outline in the plate magenta with
+land knocked out in bone, on the ink ground the map uses. `favicon.svg` is generated,
+not drawn — `d3.geoEqualEarth().fitExtent(...)` at a 64-unit viewBox, then the land path
+is decimated (points closer than 0.4 units dropped, shapes under 0.8 sq units removed)
+to get from 595 KB of 1:50m detail down to 8 KB that still reads as a world map at 32px.
+The thin band along the bottom is Antarctica, which Equal Earth genuinely flattens that
+way.
+
+`og.png` is a real screenshot of the app at 1200x630, so a shared link previews the
+thing itself. Regenerating either means re-running the steps in git history; they are
+committed as assets, not built by `build.mjs`.
+
+Shipped: `favicon.svg`, `favicon.ico` (16/32/48), `favicon-32.png`, `icon-192.png`,
+`icon-512.png`, `apple-touch-icon.png` (opaque, iOS masks it itself), `site.webmanifest`.
+Icon paths in the HTML are relative so the site also works from the `/equal-map/`
+project path.
+
 ## Sharing a view
 
 The address bar always holds the current state, so a view can be copied straight out of

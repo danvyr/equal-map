@@ -1,0 +1,1109 @@
+<title>Equal Earth True Size</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root{
+  --paper:#E2E8E9; --panel:#FBFAF6; --panel-2:#F1F0EA;
+  --ocean:#B4D0D8; --land:#F6F3EB; --hairline:#93ABB2; --coast:#4B6771;
+  --ink:#0E2128; --ink-2:#3C565E; --muted:#63797F; --rule:#C3D0D3;
+  --shadow:0 1px 2px rgba(14,33,40,.09), 0 12px 34px -14px rgba(14,33,40,.30);
+  --p1:#CE1A6E; --p2:#0F7FB8; --p3:#96700A; --p4:#6C4BB2; --p5:#17805A; --p6:#C2451D;
+  --blend:multiply; --plate-fill:.30; --ghost:.55;
+  --focus:#0F7FB8;
+  --f-display:"Instrument Serif",Georgia,"Times New Roman",serif;
+  --f-sans:"IBM Plex Sans",ui-sans-serif,system-ui,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#070E11; --panel:#0F1A1E; --panel-2:#152329;
+    --ocean:#08181F; --land:#2C454F; --hairline:#37535D; --coast:#93B0B9;
+    --ink:#E4EDEF; --ink-2:#B4C6CB; --muted:#8CA2A9; --rule:#24373E;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 16px 40px -16px rgba(0,0,0,.8);
+    --p1:#EE4B96; --p2:#1BA3D2; --p3:#B8851F; --p4:#8F71DC; --p5:#1FAE76; --p6:#EA6437;
+    --blend:screen; --plate-fill:.32; --ghost:.5;
+    --focus:#35BEEA;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#070E11; --panel:#0F1A1E; --panel-2:#152329;
+  --ocean:#08181F; --land:#2C454F; --hairline:#37535D; --coast:#93B0B9;
+  --ink:#E4EDEF; --ink-2:#B4C6CB; --muted:#8CA2A9; --rule:#24373E;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 16px 40px -16px rgba(0,0,0,.8);
+  --p1:#EE4B96; --p2:#1BA3D2; --p3:#B8851F; --p4:#8F71DC; --p5:#1FAE76; --p6:#EA6437;
+  --blend:screen; --plate-fill:.32; --ghost:.5;
+  --focus:#35BEEA;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--f-sans); font-size:14px; line-height:1.45;
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:3px}
+
+/* ── map ────────────────────────────────────────────────── */
+#stage{position:fixed; inset:0}
+#map{display:block; width:100%; height:100%; touch-action:none; cursor:grab}
+#map.grabbing{cursor:grabbing}
+#map.over-plate{cursor:move}
+
+/* ── rail ───────────────────────────────────────────────── */
+#rail{
+  position:fixed; top:0; left:0; bottom:0; width:352px; z-index:5;
+  background:var(--panel); border-right:1px solid var(--rule);
+  display:flex; flex-direction:column; box-shadow:var(--shadow);
+}
+.rail-scroll{overflow-y:auto; overflow-x:hidden; flex:1; min-height:0}
+.pad{padding:0 20px}
+
+header.brand{padding:20px 20px 16px; border-bottom:1px solid var(--rule)}
+.wordmark{font-family:var(--f-display); font-size:34px; line-height:.98; letter-spacing:-.01em; margin:0}
+.wordmark em{font-style:italic}
+.tagline{margin:9px 0 0; color:var(--ink-2); font-size:13px; max-width:34ch}
+.tagline b{font-weight:600; color:var(--ink)}
+
+.eyebrow{
+  font-family:var(--f-mono); font-size:10px; font-weight:500;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  margin:0 0 9px;
+}
+section.blk{padding:16px 20px; border-bottom:1px solid var(--rule)}
+section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
+.plates:empty + #emptyslot .empty{margin-top:14px}
+
+/* projection picker */
+.projgrid{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+.proj{
+  padding:6px 8px; border:1px solid var(--rule); border-radius:5px; text-align:left;
+  background:var(--panel-2); transition:border-color .12s, background .12s;
+}
+.proj .pn{display:block; font-size:12px; font-weight:500; line-height:1.25}
+.proj .py{display:block; font-family:var(--f-mono); font-size:9.5px; color:var(--muted); margin-top:1px}
+.groupline{
+  grid-column:1 / -1; display:flex; align-items:baseline; gap:8px; margin:11px 0 2px;
+}
+.groupline:first-child{margin-top:0}
+.groupline span:first-child{
+  font-family:var(--f-mono); font-size:9.5px; font-weight:500; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-2);
+}
+.groupline .gn{font-size:10.5px; color:var(--muted)}
+.proj:hover{border-color:var(--coast)}
+.proj[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--panel)}
+.proj[aria-pressed="true"] .py{color:var(--panel); opacity:.72}
+
+/* verdict chips */
+.verdicts{display:flex; gap:6px; margin-top:13px; flex-wrap:wrap}
+.lawnote{
+  margin:11px 0 0; padding:9px 10px; border-radius:5px;
+  background:var(--panel-2); border:1px solid var(--rule);
+  font-size:11.5px; line-height:1.5; color:var(--ink-2);
+}
+.lawnote b{color:var(--ink); font-weight:600}
+.overlays{margin-top:12px}
+.chip{
+  display:inline-flex; align-items:center; gap:5px; padding:4px 9px 4px 7px;
+  border-radius:999px; font-size:11.5px; font-weight:500;
+  border:1px solid var(--rule); background:var(--panel-2); color:var(--ink-2);
+}
+.chip .dot{width:7px; height:7px; border-radius:50%; background:currentColor; flex:none}
+.chip.yes{color:var(--p5); border-color:color-mix(in srgb, var(--p5) 40%, transparent)}
+.chip.no{color:var(--muted)}
+.chip.no .dot{background:none; border:1.5px solid currentColor; box-sizing:border-box}
+
+/* toggles */
+.toggles{display:flex; gap:6px; flex-wrap:wrap}
+.tog{
+  display:inline-flex; align-items:center; gap:7px; padding:6px 10px 6px 8px;
+  border:1px solid var(--rule); border-radius:5px; background:var(--panel-2); font-size:12.5px;
+}
+.tog .box{
+  width:13px; height:13px; border-radius:3px; border:1.5px solid var(--muted); flex:none;
+  display:grid; place-items:center;
+}
+.tog[aria-pressed="true"]{border-color:var(--coast)}
+.tog[aria-pressed="true"] .box{background:var(--ink); border-color:var(--ink)}
+.tog[aria-pressed="true"] .box::after{content:""; width:6px; height:3px; border:1.6px solid var(--panel); border-top:0; border-right:0; transform:rotate(-45deg) translate(.5px,-1px)}
+
+/* search */
+.searchwrap{position:relative}
+.search{
+  width:100%; padding:9px 11px 9px 32px; font:inherit; font-size:13px;
+  color:var(--ink); background:var(--panel-2);
+  border:1px solid var(--rule); border-radius:5px;
+}
+.search::placeholder{color:var(--muted)}
+.search:focus{outline:2px solid var(--focus); outline-offset:-1px; border-color:transparent}
+.searchwrap svg.mag{position:absolute; left:10px; top:11px; width:14px; height:14px; color:var(--muted); pointer-events:none}
+.results{
+  position:absolute; left:0; right:0; top:calc(100% + 5px); z-index:20;
+  background:var(--panel); border:1px solid var(--rule); border-radius:6px;
+  box-shadow:var(--shadow); max-height:290px; overflow-y:auto; padding:4px;
+}
+.results[hidden]{display:none}
+.res{
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  width:100%; padding:7px 9px; border-radius:4px; text-align:left; font-size:13px;
+}
+.res:hover,.res.cursor{background:var(--panel-2)}
+.res .a{font-family:var(--f-mono); font-size:11px; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums}
+.res.taken{opacity:.45}
+.res-empty{padding:10px; font-size:12.5px; color:var(--muted)}
+
+/* plates */
+.plates{padding:14px 20px 2px; display:flex; flex-direction:column; gap:10px}
+.plate{
+  border:1px solid var(--rule); border-radius:7px; background:var(--panel-2);
+  padding:10px 11px 11px; position:relative;
+  border-left:3px solid var(--pc);
+}
+.plate.sel{border-color:var(--pc); box-shadow:0 0 0 1px var(--pc)}
+.plate-top{display:flex; align-items:center; gap:8px}
+.plate-name{
+  font-size:14px; font-weight:600; letter-spacing:-.005em; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left;
+}
+.iconbtn{
+  width:22px; height:22px; border-radius:4px; display:grid; place-items:center;
+  color:var(--muted); flex:none;
+}
+.iconbtn:hover{background:var(--panel); color:var(--ink)}
+.iconbtn svg{width:13px; height:13px}
+
+.coords{
+  font-family:var(--f-mono); font-size:10.5px; color:var(--muted);
+  margin-top:4px; font-variant-numeric:tabular-nums; display:flex; gap:8px;
+}
+.coords .home{opacity:.72}
+
+.metrics{margin-top:10px; display:flex; flex-direction:column; gap:9px}
+.metric .mrow{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+.mlabel{font-size:11px; color:var(--muted)}
+.mval{font-family:var(--f-mono); font-size:13px; font-weight:500; font-variant-numeric:tabular-nums}
+.track{
+  position:relative; height:4px; margin-top:4px; border-radius:2px;
+  background:color-mix(in srgb, var(--muted) 22%, transparent);
+}
+.fill{position:absolute; top:0; bottom:0; border-radius:2px; background:var(--pc)}
+.truetick{position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--ink-2); opacity:.55}
+.scalerow{
+  display:flex; justify-content:space-between; font-family:var(--f-mono);
+  font-size:9.5px; color:var(--muted); margin-top:3px;
+}
+.truearea{
+  margin-top:9px; padding-top:8px; border-top:1px solid var(--rule);
+  display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+}
+.truearea .k{font-size:11px; color:var(--muted)}
+.truearea .v{font-family:var(--f-mono); font-size:11.5px; font-variant-numeric:tabular-nums; color:var(--ink-2)}
+
+.empty{
+  margin:14px 20px 4px; padding:14px; border:1px dashed var(--rule); border-radius:7px;
+  color:var(--muted); font-size:12.5px; line-height:1.5;
+}
+.empty b{color:var(--ink-2); font-weight:500}
+
+.railfoot{
+  padding:12px 20px 14px; border-top:1px solid var(--rule);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.credit{font-size:10.5px; color:var(--muted); line-height:1.4}
+.credit a{color:var(--ink-2)}
+.ghostbtn{
+  padding:6px 10px; border:1px solid var(--rule); border-radius:5px;
+  font-size:12px; color:var(--ink-2); background:var(--panel-2); white-space:nowrap;
+}
+.ghostbtn:hover{border-color:var(--coast); color:var(--ink)}
+.ghostbtn[disabled]{opacity:.4; cursor:default}
+
+/* HUD */
+#hud{
+  position:fixed; right:14px; bottom:14px; z-index:4;
+  background:var(--panel); border:1px solid var(--rule); border-radius:7px;
+  box-shadow:var(--shadow); padding:9px 11px; min-width:172px;
+  font-family:var(--f-mono); font-size:11px; font-variant-numeric:tabular-nums;
+}
+#hud .hl{display:flex; justify-content:space-between; gap:12px; color:var(--muted)}
+#hud .hl b{color:var(--ink); font-weight:500}
+#hud .hcoord{font-size:12.5px; color:var(--ink); margin-bottom:5px; letter-spacing:-.01em}
+#hud.idle .hvals{opacity:.4}
+
+#zoomctl{position:fixed; right:14px; bottom:96px; z-index:4; display:flex; flex-direction:column; gap:-1px}
+#zoomctl button{
+  width:30px; height:30px; background:var(--panel); border:1px solid var(--rule);
+  color:var(--ink-2); display:grid; place-items:center; box-shadow:var(--shadow);
+}
+#zoomctl button:first-child{border-radius:6px 6px 0 0}
+#zoomctl button:last-child{border-radius:0 0 6px 6px; border-top:none}
+#zoomctl button:hover{color:var(--ink); background:var(--panel-2)}
+
+.hint{
+  position:fixed; left:376px; top:16px; z-index:4;
+  font-size:12px; color:var(--ink-2); background:var(--panel);
+  border:1px solid var(--rule); border-radius:999px; padding:6px 13px;
+  box-shadow:var(--shadow); pointer-events:none;
+}
+.hint kbd{
+  font-family:var(--f-mono); font-size:10.5px; background:var(--panel-2);
+  border:1px solid var(--rule); border-radius:3px; padding:1px 4px; margin:0 1px;
+}
+
+#sheetgrab{display:none}
+
+@media (max-width:900px){
+  #rail{
+    top:auto; right:0; width:auto; max-height:56vh; border-right:none;
+    border-top:1px solid var(--rule); border-radius:12px 12px 0 0;
+  }
+  #rail.collapsed{max-height:64px}
+  #rail.collapsed .rail-scroll,#rail.collapsed .railfoot{display:none}
+  #sheetgrab{
+    display:block; width:100%; padding:7px 0 3px; flex:none;
+    border-radius:12px 12px 0 0;
+  }
+  #sheetgrab span{display:block; width:36px; height:4px; border-radius:2px; background:var(--rule); margin:0 auto}
+  header.brand{padding:6px 20px 14px}
+  .wordmark{font-size:26px}
+  .tagline{display:none}
+  .hint{display:none}
+  #hud{bottom:auto; top:14px; right:14px}
+  #zoomctl{bottom:auto; top:96px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div id="stage"><canvas id="map"></canvas></div>
+
+<div class="hint">Click a country to lift it &middot; drag it anywhere &middot; <kbd>Shift</kbd>+drag to rotate</div>
+
+<aside id="rail">
+  <button id="sheetgrab" aria-label="Expand or collapse panel"><span></span></button>
+
+  <header class="brand">
+    <h1 class="wordmark">Equal Earth<br><em>True Size</em></h1>
+    <p class="tagline">This projection gets every country's <b>area</b> exactly right. Drag one across the map and watch what it pays for that.</p>
+    <div class="verdicts" id="verdicts"></div>
+  </header>
+
+  <div class="rail-scroll">
+    <section class="blk">
+      <p class="eyebrow">Lift a country</p>
+      <div class="searchwrap">
+        <svg class="mag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+        <input class="search" id="search" type="text" autocomplete="off" spellcheck="false" placeholder="Search 200+ countries&hellip;" aria-label="Search countries">
+        <div class="results" id="results" hidden></div>
+      </div>
+    </section>
+
+    <div class="plates" id="plates"></div>
+    <div id="emptyslot"></div>
+
+    <section class="blk projblk">
+      <p class="eyebrow">Projection</p>
+      <div class="projgrid" id="projgrid"></div>
+      <p class="lawnote"><b>Area or angles &mdash; never both.</b> A sphere cannot be flattened
+        without stretching, as Gauss proved in 1827. Only a globe keeps both.</p>
+      <div class="toggles overlays">
+        <button class="tog" id="tog-grat" aria-pressed="true"><span class="box"></span>Graticule</button>
+        <button class="tog" id="tog-tissot" aria-pressed="false"><span class="box"></span>Distortion ellipses</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="railfoot">
+    <p class="credit">Equal Earth projection &mdash; &Scaron;avri&ccaron;, Patterson &amp; Jenny, 2018.<br><a href="https://equal-earth.com" target="_blank" rel="noopener">equal-earth.com</a> &middot; Boundaries: Natural Earth 1:50m</p>
+    <button class="ghostbtn" id="clearall">Clear</button>
+  </div>
+</aside>
+
+<div id="zoomctl">
+  <button id="zin" aria-label="Zoom in"><svg width="13" height="13" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.7"><path d="M7 2v10M2 7h10"/></svg></button>
+  <button id="zout" aria-label="Zoom out"><svg width="13" height="13" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.7"><path d="M2 7h10"/></svg></button>
+</div>
+
+<div id="hud" class="idle">
+  <div class="hcoord" id="hud-coord">Hover the map</div>
+  <div class="hvals">
+    <div class="hl"><span>area scale</span><b id="hud-area">&mdash;</b></div>
+    <div class="hl"><span>max angle bend</span><b id="hud-omega">&mdash;</b></div>
+  </div>
+</div>
+
+<script id="topo" type="application/json">__TOPO__</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4.0.0/dist/d3-geo-projection.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+(function(){
+"use strict";
+const RAD = Math.PI/180, DEG = 180/Math.PI, R_KM = 6371.0088;
+
+/* ── data ─────────────────────────────────────────────────────────── */
+const topo = JSON.parse(document.getElementById("topo").textContent);
+const land = topojson.feature(topo, topo.objects.land);
+const borders = topojson.mesh(topo, topo.objects.countries, (a,b)=>a!==b);
+const graticule = d3.geoGraticule().step([20,20])();
+const sphere = {type:"Sphere"};
+
+const countries = topojson.feature(topo, topo.objects.countries).features
+  .filter(f => f.properties && f.properties.name && d3.geoArea(f) > 2e-7)
+  .map(f => {
+    const ster = d3.geoArea(f);
+    return { id:String(f.id), name:f.properties.name, feature:f,
+             home:d3.geoCentroid(f), bounds:d3.geoBounds(f), ster, km2:ster*R_KM*R_KM };
+  })
+  .sort((a,b)=>a.name.localeCompare(b.name));
+const byName = new Map(countries.map(c=>[c.name.toLowerCase(), c]));
+
+/* ── projections ──────────────────────────────────────────────────── */
+const PROJ = {
+  equalEarth:  {label:"Equal Earth",  year:"2018", kind:"area", make:()=>d3.geoEqualEarth()},
+  mollweide:   {label:"Mollweide",    year:"1805", kind:"area", make:()=>d3.geoMollweide()},
+  hammer:      {label:"Hammer",       year:"1892", kind:"area", make:()=>d3.geoHammer()},
+  briesemeister:{label:"Briesemeister", year:"1953", kind:"area",
+                make:()=>d3.geoHammer().coefficient(1.75).rotate([-10,-45])},
+  eckert2:     {label:"Eckert II",    year:"1906", kind:"area", make:()=>d3.geoEckert2()},
+  eckert4:     {label:"Eckert IV",    year:"1906", kind:"area", make:()=>d3.geoEckert4()},
+  eckert6:     {label:"Eckert VI",    year:"1906", kind:"area", make:()=>d3.geoEckert6()},
+  homolosine:  {label:"Goode Homolosine", year:"1923", kind:"area", make:()=>d3.geoHomolosine()},
+  goodeCut:    {label:"Goode interrupted", year:"1923", kind:"area", lobes:true,
+                make:()=>d3.geoInterruptedHomolosine()},
+  boggsCut:    {label:"Boggs interrupted", year:"1929", kind:"area", lobes:true,
+                make:()=>d3.geoInterruptedBoggs()},
+  sinusoidal:  {label:"Sinusoidal",   year:"1570", kind:"area", make:()=>d3.geoSinusoidal()},
+  bonne:       {label:"Bonne",        year:"1752", kind:"area", make:()=>d3.geoBonne().parallel(45)},
+  lambertCyl:  {label:"Lambert cylindrical", year:"1772", kind:"area",
+                make:()=>d3.geoCylindricalEqualArea().parallel(0)},
+  gallPeters:  {label:"Gall\u2013Peters", year:"1855", kind:"area",
+                make:()=>d3.geoCylindricalEqualArea().parallel(45)},
+
+  mercator:    {label:"Mercator",     year:"1569", kind:"angle", make:()=>d3.geoMercator()},
+  peirce:      {label:"Peirce Quincuncial", year:"1879", kind:"angle",
+                make:()=>d3.geoPeirceQuincuncial()},
+
+  naturalEarth:{label:"Natural Earth",year:"2012", kind:"none", make:()=>d3.geoNaturalEarth1()},
+  robinson:    {label:"Robinson",     year:"1963", kind:"none", make:()=>d3.geoRobinson()},
+  winkel3:     {label:"Winkel Tripel",year:"1921", kind:"none", make:()=>d3.geoWinkel3()},
+  equirect:    {label:"Equirectangular", year:"~100", kind:"none", make:()=>d3.geoEquirectangular()}
+};
+const GROUPS = [
+  {kind:"area",  title:"True size",   note:"every area exact"},
+  {kind:"angle", title:"True angles", note:"local shape exact"},
+  {kind:"none",  title:"Compromise",  note:"both a little wrong"}
+];
+
+const state = {
+  projKey:"equalEarth", transform:d3.zoomIdentity,
+  plates:[], selected:null, grat:true, tissot:false
+};
+
+/* ── spherical helpers ────────────────────────────────────────────── */
+function norm180(a){ a = (a+180)%360; if(a<0) a+=360; return a-180; }
+
+function mover(from, to, spin){
+  const r0 = d3.geoRotation([-from[0], -from[1]]);
+  const r1 = d3.geoRotation([-to[0], -to[1]]);
+  if(!spin) return p => r1.invert(r0(p));
+  const rs = d3.geoRotation([0,0,spin]);
+  return p => r1.invert(rs(r0(p)));
+}
+function bearing(a, b){
+  const f1=a[1]*RAD, f2=b[1]*RAD, dl=(b[0]-a[0])*RAD;
+  return Math.atan2(Math.sin(dl)*Math.cos(f2),
+    Math.cos(f1)*Math.sin(f2)-Math.sin(f1)*Math.cos(f2)*Math.cos(dl))*DEG;
+}
+// spin that keeps the country's own north pointing north at the destination
+function northUpSpin(from, to){
+  const np = [from[0], Math.min(89.5, from[1]+0.05)];
+  const bAt = s => { const m = mover(from,to,s); return bearing(m(from), m(np)); };
+  const b0 = norm180(bAt(0)), d = norm180(bAt(1)-b0);
+  return Math.abs(d) < 1e-9 ? 0 : -b0/d;
+}
+function mapCoords(c, depth, fn){
+  if(depth===0) return fn(c);
+  const out = new Array(c.length);
+  for(let i=0;i<c.length;i++) out[i] = mapCoords(c[i], depth-1, fn);
+  return out;
+}
+function transformFeature(f, fn){
+  const g = f.geometry;
+  return {type:"Feature", properties:f.properties, geometry:{type:g.type,
+    coordinates: mapCoords(g.coordinates, g.type==="Polygon"?2:3, fn)}};
+}
+
+/* ── interrupted projections ──────────────────────────────────────────
+   d3's interrupted clip mis-joins polygons that straddle a lobe boundary:
+   Greenland comes out as one slab spanning both northern lobes, measuring
+   6.55x its true area. The lobe boundaries are plain meridians, so we cut
+   the geometry ourselves before handing it over. Only shapes that actually
+   cross a boundary are rebuilt — everything else stays byte-identical. */
+const LOBE_EPS = 0.01, POLE_CAP = 89.995;
+const LOBE_CUTS_N = [-40], LOBE_CUTS_S = [-100,-20,80];
+const LOBE_BOXES = [
+  [-180,0,-40-LOBE_EPS,90],            [-40+LOBE_EPS,0,180,90],
+  [-180,-90,-100-LOBE_EPS,0],          [-100+LOBE_EPS,-90,-20-LOBE_EPS,0],
+  [-20+LOBE_EPS,-90,80-LOBE_EPS,0],    [80+LOBE_EPS,-90,180,0]
+].map(([w,s,e,n]) => [w, Math.max(s,-POLE_CAP), e, Math.min(n,POLE_CAP)]);
+
+function unwrapRing(r){                      // longitudes continuous across the seam
+  const o = [r[0].slice()];
+  for(let i=1;i<r.length;i++){
+    const q = r[i].slice();
+    q[0] -= 360*Math.round((q[0]-o[i-1][0])/360);
+    o.push(q);
+  }
+  return o;
+}
+function clipRect(ring, x0, y0, x1, y1){     // Sutherland–Hodgman, convex window
+  const ix = (a,b,x)=>[x, a[1]+(x-a[0])/(b[0]-a[0])*(b[1]-a[1])];
+  const iy = (a,b,y)=>[a[0]+(y-a[1])/(b[1]-a[1])*(b[0]-a[0]), y];
+  const edges = [[p=>p[0]>=x0,(a,b)=>ix(a,b,x0)], [p=>p[0]<=x1,(a,b)=>ix(a,b,x1)],
+                 [p=>p[1]>=y0,(a,b)=>iy(a,b,y0)], [p=>p[1]<=y1,(a,b)=>iy(a,b,y1)]];
+  let out = ring;
+  for(const [inside, isect] of edges){
+    const inp = out; out = [];
+    for(let i=0;i<inp.length;i++){
+      const cur = inp[i], prev = inp[(i+inp.length-1)%inp.length];
+      const ci = inside(cur), pi = inside(prev);
+      if(ci){ if(!pi) out.push(isect(prev,cur)); out.push(cur); }
+      else if(pi) out.push(isect(prev,cur));
+    }
+    if(out.length < 3) return null;
+  }
+  return out;
+}
+function straddlesLobe(f){
+  const b = d3.geoBounds(f), w = b[0][0], s = b[0][1], e = b[1][0], n = b[1][1];
+  const spans = m => w<=e ? (w<m && m<e) : (m>w || m<e);
+  return (n>0 && LOBE_CUTS_N.some(spans)) || (s<0 && LOBE_CUTS_S.some(spans));
+}
+function cutIntoLobes(f){
+  if(f.type === "FeatureCollection")                     // topojson land is a collection
+    return {type:"FeatureCollection", features: f.features.map(forLobes)};
+  const g = f.geometry || f;
+  if(g.type !== "Polygon" && g.type !== "MultiPolygon") return f;
+  const polys = g.type==="Polygon" ? [g.coordinates] : g.coordinates;
+  const out = [];
+  for(const poly of polys){
+    const rings = poly.map(r => {
+      const u = unwrapRing(r.slice(0, r.length-1));
+      let x0=Infinity, x1=-Infinity, y0=Infinity, y1=-Infinity;
+      for(const q of u){
+        if(q[0]<x0)x0=q[0]; if(q[0]>x1)x1=q[0];
+        if(q[1]<y0)y0=q[1]; if(q[1]>y1)y1=q[1];
+      }
+      return {u, x0, x1, y0, y1};
+    });
+    for(const box of LOBE_BOXES) for(const k of [-1,0,1]){
+      const bx0 = box[0]+360*k, bx1 = box[2]+360*k;
+      const got = [];
+      for(const r of rings){
+        if(r.x1 < bx0 || r.x0 > bx1 || r.y1 < box[1] || r.y0 > box[3]) continue;
+        const c = clipRect(r.u, bx0, box[1], bx1, box[3]);
+        if(c){
+          const m = c.map(q => [q[0]-360*k, q[1]]);
+          got.push(m.concat([m[0]]));
+        }
+      }
+      if(got.length) out.push(got);
+    }
+  }
+  return out.length ? {type:"Feature", properties:f.properties,
+                       geometry:{type:"MultiPolygon", coordinates:out}} : f;
+}
+const forLobes = f => straddlesLobe(f) ? cutIntoLobes(f) : f;
+
+/* ── distortion: Jacobian → singular values → Tissot ──────────────── */
+function distortionAt(proj, lon, lat){
+  const S = proj.scale(), d = 1e-4;
+  const cs = Math.max(1e-6, Math.cos(lat*RAD));
+  const dl = (d/cs)*DEG, dp = d*DEG;
+  const A = proj([lon+dl/2, lat]), B = proj([lon-dl/2, lat]);
+  const C = proj([lon, Math.min(89.99,lat+dp/2)]), D = proj([lon, Math.max(-89.99,lat-dp/2)]);
+  if(!A||!B||!C||!D) return null;
+  const a=(A[0]-B[0])/d/S, b=(C[0]-D[0])/d/S,
+        c=(A[1]-B[1])/d/S, e=(C[1]-D[1])/d/S;
+  const E=(a+e)/2, F=(a-e)/2, G=(c+b)/2, H=(c-b)/2;
+  const Q=Math.hypot(E,H), Rr=Math.hypot(F,G);
+  const sx=Q+Rr, sy=Math.abs(Q-Rr);
+  const omega = 2*Math.asin(Math.min(1,(sx-sy)/(sx+sy||1)))*DEG;
+  return {sx, sy, omega, areal:Math.abs(a*e-b*c), phi:(Math.atan2(H,E)+Math.atan2(G,F))/2};
+}
+
+/* ── theme-aware canvas colours ───────────────────────────────────── */
+const C = {};
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  const g = n => cs.getPropertyValue(n).trim();
+  Object.assign(C, {
+    paper:g("--paper"), ocean:g("--ocean"), land:g("--land"), hairline:g("--hairline"),
+    coast:g("--coast"), ink:g("--ink"), muted:g("--muted"), panel:g("--panel"),
+    blend:g("--blend"), fillA:parseFloat(g("--plate-fill")), ghostA:parseFloat(g("--ghost"))
+  });
+  C.plates = [g("--p1"),g("--p2"),g("--p3"),g("--p4"),g("--p5"),g("--p6")];
+}
+readTheme();
+
+/* ── canvas setup ─────────────────────────────────────────────────── */
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+const buf = document.createElement("canvas");
+const bctx = buf.getContext("2d");
+let W=0, H=0, DPR=1, baseFit=null, projection=null, path=null, bpath=null;
+let needBase = true, raf = null;
+let landCache = {key:null, geo:null};
+function landFor(){
+  if(landCache.key !== state.projKey)
+    landCache = {key:state.projKey, geo: PROJ[state.projKey].lobes ? forLobes(land) : land};
+  return landCache.geo;
+}
+
+function narrow(){ return W <= 900; }
+function mapBox(){
+  return narrow() ? [[18, 74],[W-18, Math.max(200, H*0.46)]]
+                  : [[378, 26],[Math.max(420,W-26), H-26]];
+}
+function fitBase(){
+  const p = PROJ[state.projKey].make();
+  p.fitExtent(mapBox(), sphere);
+  baseFit = {k:p.scale(), t:p.translate()};
+}
+function buildProjection(){
+  const p = PROJ[state.projKey].make().precision(0.35);
+  const t = state.transform;
+  p.scale(baseFit.k*t.k).translate([t.x + baseFit.t[0]*t.k, t.y + baseFit.t[1]*t.k]);
+  return p;
+}
+function invalidate(base){ if(base) needBase = true; if(!raf) raf = requestAnimationFrame(draw); }
+
+function resize(){
+  W = window.innerWidth; H = window.innerHeight;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  for(const cv of [canvas, buf]){ cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR); }
+  canvas.style.width = W+"px"; canvas.style.height = H+"px";
+  fitBase(); invalidate(true);
+}
+
+/* ── drawing ──────────────────────────────────────────────────────── */
+function drawBase(){
+  bctx.setTransform(DPR,0,0,DPR,0,0);
+  bctx.clearRect(0,0,W,H);
+  bctx.fillStyle = C.paper; bctx.fillRect(0,0,W,H);
+  bctx.lineJoin = "round"; bctx.lineCap = "round";
+
+  bctx.beginPath(); bpath(sphere);
+  bctx.fillStyle = C.ocean; bctx.fill();
+
+  bctx.beginPath(); bpath(landFor());
+  bctx.fillStyle = C.land; bctx.fill();
+
+  bctx.beginPath(); bpath(borders);
+  bctx.strokeStyle = C.coast; bctx.globalAlpha = .42; bctx.lineWidth = .7; bctx.stroke();
+  bctx.globalAlpha = 1;
+
+  if(state.grat){
+    bctx.save(); bctx.beginPath(); bpath(sphere); bctx.clip();
+    bctx.beginPath(); bpath(graticule);
+    bctx.strokeStyle = C.hairline; bctx.globalAlpha = .5; bctx.lineWidth = .55; bctx.stroke();
+    bctx.restore(); bctx.globalAlpha = 1;
+  }
+  if(state.tissot) drawTissot();
+
+  // neatline: a fine double rule around the projection's own outline
+  bctx.beginPath(); bpath(sphere);
+  bctx.strokeStyle = C.coast; bctx.globalAlpha = .85; bctx.lineWidth = 1.1; bctx.stroke();
+  bctx.globalAlpha = .3; bctx.lineWidth = 3.4; bctx.stroke();
+  bctx.globalAlpha = 1;
+}
+
+function drawTissot(){
+  const r = 9 * Math.min(3.2, Math.sqrt(state.transform.k));
+  bctx.save();
+  bctx.beginPath(); bpath(sphere); bctx.clip();
+  for(let lat=-75; lat<=75; lat+=15){
+    for(let lon=-180; lon<180; lon+=30){
+      const c = projection([lon,lat]); if(!c) continue;
+      const m = distortionAt(projection, lon, lat); if(!m) continue;
+      const rx = r*m.sx, ry = r*m.sy;
+      if(!isFinite(rx) || !isFinite(ry) || rx > 4000) continue;
+      bctx.beginPath();
+      bctx.ellipse(c[0], c[1], Math.max(.4,rx), Math.max(.4,ry), m.phi, 0, 2*Math.PI);
+      bctx.fillStyle = C.coast; bctx.globalAlpha = .14; bctx.fill();
+      bctx.globalAlpha = .6; bctx.lineWidth = .9; bctx.strokeStyle = C.coast; bctx.stroke();
+    }
+  }
+  bctx.restore(); bctx.globalAlpha = 1;
+}
+
+function drawPlates(){
+  const ps = state.plates;
+  if(!ps.length) return;
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+  // where each one came from
+  for(const p of ps){
+    if(p.pos[0]===p.origin[0] && p.pos[1]===p.origin[1]) continue;
+    ctx.save();
+    ctx.setLineDash([3,3]); ctx.lineWidth = 1; ctx.globalAlpha = .55; ctx.strokeStyle = p.color;
+    ctx.beginPath(); path(ghostFor(p)); ctx.stroke();
+    const a = projection(p.origin), b = projection(p.pos);
+    if(a && b){
+      ctx.setLineDash([2,4]); ctx.globalAlpha = .45; ctx.beginPath();
+      ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+      ctx.beginPath(); ctx.arc(a[0],a[1],2,0,2*Math.PI); ctx.fillStyle = p.color; ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // the overprint itself
+  ctx.globalCompositeOperation = C.blend === "screen" ? "screen" : "multiply";
+  for(const p of ps){
+    ctx.globalAlpha = C.fillA; ctx.fillStyle = p.color;
+    ctx.beginPath(); path(p.draw); ctx.fill();
+  }
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+
+  for(const p of ps){
+    ctx.beginPath(); path(p.draw);
+    ctx.strokeStyle = p.color; ctx.lineWidth = p === state.selected ? 2.1 : 1.3; ctx.stroke();
+  }
+
+  ctx.font = '600 12px "IBM Plex Sans", system-ui, sans-serif';
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  for(const p of ps){
+    const c = projection(p.pos); if(!c) continue;
+    ctx.strokeStyle = C.paper; ctx.lineWidth = 3.8; ctx.strokeText(p.name, c[0], c[1]);
+    ctx.fillStyle = p.color; ctx.fillText(p.name, c[0], c[1]);
+  }
+  ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+}
+
+function draw(){
+  raf = null;
+  projection = buildProjection();
+  path  = d3.geoPath(projection, ctx);
+  bpath = d3.geoPath(projection, bctx);
+  if(needBase){ drawBase(); needBase = false; }
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(buf,0,0);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  drawPlates();
+  for(const p of state.plates) syncPlateUI(p);
+}
+
+/* ── plates (a country lifted off the map) ────────────────────────── */
+const MAX_PLATES = 6;
+const platesEl = document.getElementById("plates");
+const emptyEl  = document.getElementById("emptyslot");
+let uid = 0;
+
+function freeColorIndex(){
+  const used = new Set(state.plates.map(p=>p.ci));
+  for(let i=0;i<MAX_PLATES;i++) if(!used.has(i)) return i;
+  return 0;
+}
+// the home outline only changes when the projection does
+function ghostFor(p){
+  if(p.ghostKey !== state.projKey){
+    p.ghostKey = state.projKey;
+    p.ghost = PROJ[state.projKey].lobes ? forLobes(p.feature) : p.feature;
+  }
+  return p.ghost;
+}
+function updateGeo(p){
+  const spin = northUpSpin(p.origin, p.pos) + p.spin;
+  p.geo = transformFeature(p.feature, mover(p.origin, p.pos, spin));
+  p.draw = PROJ[state.projKey].lobes ? forLobes(p.geo) : p.geo;   // what gets drawn & measured
+}
+function addPlate(country){
+  const existing = state.plates.find(p=>p.id===country.id);
+  if(existing){ select(existing); return existing; }
+  if(state.plates.length >= MAX_PLATES) return null;
+  const ci = freeColorIndex();
+  const p = {
+    uid:++uid, id:country.id, name:country.name, feature:country.feature,
+    ster:country.ster, km2:country.km2,
+    origin:country.home.slice(), pos:country.home.slice(), spin:0, ci,
+    get color(){ return C.plates[this.ci]; }
+  };
+  updateGeo(p);
+  state.plates.push(p);
+  buildCard(p);
+  renderEmpty();
+  select(p);
+  invalidate();
+  return p;
+}
+function removePlate(p){
+  state.plates = state.plates.filter(x=>x!==p);
+  p.ui.root.remove();
+  if(state.selected===p) state.selected = state.plates[state.plates.length-1] || null;
+  renderEmpty(); renderResults(); invalidate();
+}
+function select(p){
+  state.selected = p;
+  for(const q of state.plates) q.ui && q.ui.root.classList.toggle("sel", q===p);
+  invalidate();
+}
+function moveTo(p, lon, lat){
+  p.pos[0] = norm180(lon);
+  p.pos[1] = Math.max(-80, Math.min(80, lat));
+  updateGeo(p); invalidate();
+}
+function goHome(p){ p.spin = 0; moveTo(p, p.origin[0], p.origin[1]); }
+
+/* ── plate cards ──────────────────────────────────────────────────── */
+const fmtKm = n => Math.round(n).toLocaleString("en-US");
+function fmtRatio(r){
+  if(!isFinite(r)) return "\u221e";
+  if(r < 10)    return r.toFixed(2) + "\u00d7";
+  if(r < 100)   return r.toFixed(1) + "\u00d7";
+  if(r < 10000) return Math.round(r).toLocaleString("en-US") + "\u00d7";
+  return r.toExponential(1) + "\u00d7";
+}
+function dms(v, pos, neg){
+  return Math.abs(v).toFixed(1) + "°" + (v>=0?pos:neg);
+}
+function coordText(c){ return dms(c[1],"N","S") + " " + dms(c[0],"E","W"); }
+
+function buildCard(p){
+  const el = document.createElement("div");
+  el.className = "plate";
+  el.style.setProperty("--pc", p.color);
+  el.innerHTML =
+    '<div class="plate-top">'+
+      '<button class="plate-name" title="Select"></button>'+
+      '<button class="iconbtn" data-act="home" title="Send back to its real position" aria-label="Send back to its real position">'+
+        '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 7A5 5 0 1 1 7 2c1.7 0 3.2.9 4 2.2"/><path d="M11.4 1.6v2.8H8.6"/></svg></button>'+
+      '<button class="iconbtn" data-act="del" title="Put it back" aria-label="Remove">'+
+        '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg></button>'+
+    '</div>'+
+    '<div class="coords"><span class="now"></span><span class="home"></span></div>'+
+    '<div class="metrics">'+
+      '<div class="metric">'+
+        '<div class="mrow"><span class="mlabel">Area as drawn</span><span class="mval m-area"></span></div>'+
+        '<div class="track"><span class="fill f-area"></span><span class="truetick" style="left:50%"></span></div>'+
+        '<div class="scalerow"><span>0.06&times;</span><span>true</span><span>16&times;</span></div>'+
+      '</div>'+
+      '<div class="metric">'+
+        '<div class="mrow"><span class="mlabel">Shape &mdash; max angle bent</span><span class="mval m-om"></span></div>'+
+        '<div class="track"><span class="fill f-om" style="left:0"></span></div>'+
+        '<div class="scalerow"><span>0&deg;</span><span>right angles kept</span><span>180&deg;</span></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="truearea"><span class="k">True area</span><span class="v"></span></div>';
+
+  p.ui = {
+    root:el,
+    name:el.querySelector(".plate-name"),
+    now:el.querySelector(".now"), home:el.querySelector(".home"),
+    area:el.querySelector(".m-area"), fArea:el.querySelector(".f-area"),
+    om:el.querySelector(".m-om"), fOm:el.querySelector(".f-om"),
+    truea:el.querySelector(".truearea .v")
+  };
+  p.ui.name.textContent = p.name;
+  p.ui.home.textContent = " home " + coordText(p.origin);
+  p.ui.truea.textContent = fmtKm(p.km2) + " km²";
+  p.ui.name.addEventListener("click", ()=>select(p));
+  el.addEventListener("click", e=>{
+    const act = e.target.closest("[data-act]");
+    if(!act) return;
+    if(act.dataset.act === "home") goHome(p); else removePlate(p);
+  });
+  platesEl.appendChild(el);
+}
+
+function syncPlateUI(p){
+  if(!p.ui || !projection) return;
+  const S = projection.scale();
+  const drawn = Math.abs(path.area(p.draw));
+  const ratio = drawn/(p.ster*S*S);
+  const m = distortionAt(projection, p.pos[0], p.pos[1]);
+  const om = m ? m.omega : 0;
+
+  p.ui.root.style.setProperty("--pc", p.color);
+  p.ui.now.textContent = coordText(p.pos) + (p.spin ? "  ↻" + Math.round(p.spin) + "°" : "");
+  p.ui.area.textContent = fmtRatio(ratio);
+  p.ui.om.textContent = om.toFixed(1) + "°";
+
+  const t = Math.max(0, Math.min(1, (Math.log2(ratio||1e-6)+4)/8)) * 100;
+  p.ui.fArea.style.left  = Math.min(50,t) + "%";
+  p.ui.fArea.style.width = Math.max(1.2, Math.abs(t-50)) + "%";
+  p.ui.fOm.style.width   = Math.max(1.2, Math.min(100, om/180*100)) + "%";
+}
+
+function renderEmpty(){
+  const n = state.plates.length;
+  emptyEl.innerHTML = n === 0
+    ? '<div class="empty">Nothing lifted yet. <b>Click any country on the map</b> — or search above — to peel it off and carry it somewhere else.</div>'
+    : (n >= MAX_PLATES ? '<div class="empty">All six overprint plates are in use. Remove one to lift another.</div>' : "");
+  document.getElementById("clearall").disabled = n === 0;
+}
+
+/* ── projection controls & verdicts ───────────────────────────────── */
+const projgrid = document.getElementById("projgrid");
+for(const g of GROUPS){
+  const h = document.createElement("p");
+  h.className = "groupline";
+  h.innerHTML = "<span>"+g.title+"</span><span class=\"gn\">"+g.note+"</span>";
+  projgrid.appendChild(h);
+  for(const key of Object.keys(PROJ)){
+    if(PROJ[key].kind !== g.kind) continue;
+    const b = document.createElement("button");
+    b.className = "proj"; b.dataset.key = key;
+    b.innerHTML = '<span class="pn">'+PROJ[key].label+'</span><span class="py">'+PROJ[key].year+'</span>';
+    b.addEventListener("click", ()=>setProjection(key));
+    projgrid.appendChild(b);
+  }
+}
+function setProjection(key){
+  state.projKey = key;
+  for(const b of projgrid.querySelectorAll(".proj")) b.setAttribute("aria-pressed", String(b.dataset.key===key));
+  const P = PROJ[key];
+  document.getElementById("verdicts").innerHTML =
+    chip(P.kind==="area", "Equal-area", "Areas wrong") +
+    chip(P.kind==="angle", "Conformal", "Shapes bent");
+  for(const q of state.plates) updateGeo(q);
+  state.transform = d3.zoomIdentity;
+  d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
+  fitBase(); invalidate(true);
+}
+function chip(ok, yes, no){
+  return ok ? '<span class="chip yes"><span class="dot"></span>'+yes+'</span>'
+            : '<span class="chip no"><span class="dot"></span>'+no+'</span>';
+}
+
+/* ── overlay toggles ──────────────────────────────────────────────── */
+function bindToggle(id, key){
+  const b = document.getElementById(id);
+  b.addEventListener("click", ()=>{
+    state[key] = !state[key];
+    b.setAttribute("aria-pressed", String(state[key]));
+    invalidate(true);
+  });
+}
+bindToggle("tog-grat","grat");
+bindToggle("tog-tissot","tissot");
+
+/* ── search ───────────────────────────────────────────────────────── */
+const searchEl = document.getElementById("search"), resultsEl = document.getElementById("results");
+let matches = [];
+function renderResults(){
+  const q = searchEl.value.trim().toLowerCase();
+  if(document.activeElement !== searchEl){ resultsEl.hidden = true; return; }
+  matches = (q ? countries.filter(c=>c.name.toLowerCase().includes(q)) : countries.slice())
+    .sort((a,b)=>{
+      if(q){ const d = a.name.toLowerCase().indexOf(q) - b.name.toLowerCase().indexOf(q); if(d) return d; }
+      return b.km2 - a.km2;
+    }).slice(0,60);
+  if(!matches.length){
+    resultsEl.innerHTML = '<div class="res-empty">No country matches “'+
+      q.replace(/[<>&]/g,"")+'”.</div>';
+  } else {
+    const taken = new Set(state.plates.map(p=>p.id));
+    resultsEl.innerHTML = matches.map(c =>
+      '<button class="res'+(taken.has(c.id)?" taken":"")+'" data-id="'+c.id+'">'+
+      '<span>'+c.name+'</span><span class="a">'+fmtKm(c.km2)+' km²</span></button>').join("");
+  }
+  resultsEl.hidden = false;
+}
+searchEl.addEventListener("focus", renderResults);
+searchEl.addEventListener("input", renderResults);
+searchEl.addEventListener("keydown", e=>{
+  if(e.key === "Enter" && matches[0]){ addPlate(matches[0]); searchEl.value = ""; searchEl.blur(); }
+  if(e.key === "Escape"){ searchEl.value = ""; searchEl.blur(); }
+});
+searchEl.addEventListener("blur", ()=>setTimeout(()=>{resultsEl.hidden = true;}, 140));
+resultsEl.addEventListener("mousedown", e=>{
+  const b = e.target.closest(".res"); if(!b) return;
+  e.preventDefault();
+  const c = countries.find(x=>x.id===b.dataset.id);
+  if(c){ addPlate(c); searchEl.value = ""; searchEl.blur(); }
+});
+
+document.getElementById("clearall").addEventListener("click", ()=>{
+  for(const p of state.plates.slice()) removePlate(p);
+});
+
+/* ── interaction ──────────────────────────────────────────────────── */
+function evPoint(ev){ try { return d3.pointer(ev, canvas); } catch(_){ return null; } }
+function geoAt(pt){
+  if(!projection || !pt) return null;
+  const g = projection.invert(pt);
+  if(!g || !isFinite(g[0]) || !isFinite(g[1])) return null;
+  const back = projection(g);
+  if(!back || Math.hypot(back[0]-pt[0], back[1]-pt[1]) > 1) return null; // outside the map outline
+  return g;
+}
+function plateAt(pt){
+  const g = geoAt(pt); if(!g) return null;
+  for(let i=state.plates.length-1;i>=0;i--)
+    if(d3.geoContains(state.plates[i].geo, g)) return state.plates[i];
+  return null;
+}
+function inBounds(b, g){
+  const [[w,s],[e,n]] = b;
+  if(g[1] < s-.01 || g[1] > n+.01) return false;
+  return w <= e ? (g[0] >= w-.01 && g[0] <= e+.01)      // normal box
+                : (g[0] >= w-.01 || g[0] <= e+.01);      // straddles the antimeridian
+}
+function countryAt(pt){
+  const g = geoAt(pt); if(!g) return null;
+  let best = null;
+  for(const c of countries){
+    if(!inBounds(c.bounds, g)) continue;
+    // smallest match wins, so an enclave beats the country around it
+    if(d3.geoContains(c.feature, g) && (!best || c.ster < best.ster)) best = c;
+  }
+  return best;
+}
+
+const zoom = d3.zoom().scaleExtent([1, 14])
+  .filter(ev => {
+    if(ev.type === "wheel") return true;
+    if(ev.button) return false;
+    return !plateAt(evPoint(ev));
+  })
+  .on("zoom", ev => { state.transform = ev.transform; invalidate(true); });
+d3.select(canvas).call(zoom);
+
+let down = null, hintLive = true;
+function hideHint(){
+  if(!hintLive) return;
+  hintLive = false;
+  const h = document.querySelector(".hint"); if(h) h.remove();
+}
+
+canvas.addEventListener("pointerdown", e => {
+  if(e.button) return;
+  const pt = evPoint(e); if(!pt) return;
+  const p = plateAt(pt);
+  down = {pt, plate:p, moved:false};
+  if(p){
+    select(p);
+    down.grab = geoAt(pt);
+    down.start = p.pos.slice();
+    down.spin0 = p.spin;
+    down.rotating = e.shiftKey;
+    if(!down.grab){ down = null; return; }
+    try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+    canvas.classList.add("grabbing");
+    e.preventDefault();
+  }
+});
+
+canvas.addEventListener("pointermove", e => {
+  const pt = evPoint(e); if(!pt) return;
+  if(down && Math.hypot(pt[0]-down.pt[0], pt[1]-down.pt[1]) > 4) down.moved = true;
+
+  if(down && down.plate){
+    hideHint();
+    const p = down.plate;
+    if(down.rotating || e.shiftKey){
+      p.spin = down.spin0 + (pt[0]-down.pt[0])*0.7;
+      updateGeo(p); invalidate();
+    } else {
+      const g = projection.invert(pt);
+      if(g && isFinite(g[0]))
+        moveTo(p, down.start[0] + norm180(g[0]-down.grab[0]), down.start[1] + (g[1]-down.grab[1]));
+    }
+    updateHUD(pt);
+    return;
+  }
+  canvas.classList.toggle("over-plate", !!plateAt(pt));
+  updateHUD(pt);
+});
+
+function endPointer(e){
+  canvas.classList.remove("grabbing");
+  if(down && !down.plate && !down.moved){
+    const pt = evPoint(e) || down.pt;
+    const c = countryAt(pt);
+    if(c){ addPlate(c); hideHint(); } else select(null);
+  }
+  down = null;
+}
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", ()=>{ canvas.classList.remove("grabbing"); down = null; });
+canvas.addEventListener("pointerleave", ()=>{
+  if(down) return;
+  document.getElementById("hud").classList.add("idle");
+  document.getElementById("hud-coord").textContent = "Hover the map";
+});
+
+/* ── cursor readout ───────────────────────────────────────────────── */
+const hudEl = document.getElementById("hud"),
+      hudCoord = document.getElementById("hud-coord"),
+      hudArea = document.getElementById("hud-area"),
+      hudOm = document.getElementById("hud-omega");
+function updateHUD(pt){
+  const g = geoAt(pt);
+  if(!g){ hudEl.classList.add("idle"); return; }
+  hudEl.classList.remove("idle");
+  hudCoord.textContent = coordText(g);
+  const m = distortionAt(projection, g[0], g[1]);
+  if(!m){ hudArea.textContent = hudOm.textContent = "—"; return; }
+  hudArea.textContent = fmtRatio(m.areal);
+  hudOm.textContent = m.omega.toFixed(1) + "°";
+}
+
+/* ── keyboard ─────────────────────────────────────────────────────── */
+window.addEventListener("keydown", e => {
+  if(e.target.closest("input, textarea")) return;
+  if(e.key === "Escape"){ select(null); return; }
+  const p = state.selected; if(!p) return;
+  const step = e.shiftKey ? 5 : 1;
+  let hit = true;
+  switch(e.key){
+    case "ArrowLeft":  moveTo(p, p.pos[0]-step, p.pos[1]); break;
+    case "ArrowRight": moveTo(p, p.pos[0]+step, p.pos[1]); break;
+    case "ArrowUp":    moveTo(p, p.pos[0], p.pos[1]+step); break;
+    case "ArrowDown":  moveTo(p, p.pos[0], p.pos[1]-step); break;
+    case "[": p.spin -= 3; updateGeo(p); invalidate(); break;
+    case "]": p.spin += 3; updateGeo(p); invalidate(); break;
+    case "h": case "H": goHome(p); break;
+    case "Backspace": case "Delete": removePlate(p); break;
+    default: hit = false;
+  }
+  if(hit){ e.preventDefault(); hideHint(); }
+});
+
+/* ── zoom buttons & mobile sheet ──────────────────────────────────── */
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+function zoomBy(f){
+  const sel = d3.select(canvas);
+  (reduce.matches ? sel : sel.transition().duration(280)).call(zoom.scaleBy, f);
+}
+document.getElementById("zin").addEventListener("click", ()=>zoomBy(1.7));
+document.getElementById("zout").addEventListener("click", ()=>zoomBy(1/1.7));
+document.getElementById("sheetgrab").addEventListener("click", ()=>{
+  document.getElementById("rail").classList.toggle("collapsed");
+});
+
+/* ── boot ─────────────────────────────────────────────────────────── */
+window.addEventListener("resize", ()=>{ resize(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{ readTheme(); invalidate(true); });
+new MutationObserver(()=>{ readTheme(); invalidate(true); })
+  .observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+
+resize();
+setProjection("equalEarth");
+
+// Open on the comparison this projection was built to make honest:
+// Greenland — the poster child of map distortion — dropped onto the Congo basin,
+// and India sitting where Greenland actually lives.
+const greenland = byName.get("greenland"), india = byName.get("india");
+if(greenland){ const p = addPlate(greenland); if(p) moveTo(p, 21, 1); }
+if(india && greenland){ const p = addPlate(india); if(p) moveTo(p, greenland.home[0], greenland.home[1]); }
+select(state.plates[0] || null);
+renderEmpty();
+invalidate(true);
+})();
+</script>

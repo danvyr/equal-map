@@ -5,12 +5,54 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const tpl  = readFileSync("src/app.html", "utf8");
-const topo = readFileSync("data/countries-50m.json", "utf8").trim();
+const topo = JSON.parse(readFileSync("data/countries-50m.json", "utf8"));
 
-if (topo.includes("</script")) throw new Error("topology would break out of its <script> tag");
+// ── Crimea ───────────────────────────────────────────────────────────────
+// Natural Earth's default admin-0 build follows de facto control and files the
+// Crimean peninsula under Russia. This map follows the internationally recognised
+// border (UN GA 68/262), so the peninsula is moved back to Ukraine here rather than
+// by editing data/countries-50m.json — the vendored file stays exactly as downloaded,
+// and re-fetching world-atlas cannot silently undo this.
+const CRIMEA_BOX = [32.0, 44.0, 37.0, 46.6];   // w, s, e, n — verified to enclose only the peninsula
+
+function arcPoints(t, index){                   // topojson arcs are quantised deltas
+  const arc = t.arcs[index < 0 ? ~index : index];
+  const [sx, sy] = t.transform.scale, [tx, ty] = t.transform.translate;
+  let x = 0, y = 0;
+  return arc.map(([dx, dy]) => { x += dx; y += dy; return [x*sx + tx, y*sy + ty]; });
+}
+function polygonBounds(t, poly){
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const ring of poly) for (const index of ring) for (const [x, y] of arcPoints(t, index)) {
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  return [x0, y0, x1, y1];
+}
+function reassignCrimea(t){
+  const geoms = t.objects.countries.geometries;
+  const ru = geoms.find(g => g.properties.name === "Russia");
+  const ua = geoms.find(g => g.properties.name === "Ukraine");
+  if (!ru || !ua) throw new Error("Crimea fix: Russia or Ukraine missing from the topology");
+  const moved = [];
+  ru.arcs = ru.arcs.filter(poly => {
+    const [x0, y0, x1, y1] = polygonBounds(t, poly);
+    const inside = x0 >= CRIMEA_BOX[0] && y0 >= CRIMEA_BOX[1]
+                && x1 <= CRIMEA_BOX[2] && y1 <= CRIMEA_BOX[3];
+    if (inside) moved.push(poly);
+    return !inside;
+  });
+  // loud rather than silent: if upstream ever reshapes this, the build stops
+  if (moved.length !== 1) throw new Error(`Crimea fix: expected 1 polygon in the box, found ${moved.length}`);
+  ua.arcs.push(...moved);
+}
+reassignCrimea(topo);
+
+const topoText = JSON.stringify(topo);
+if (topoText.includes("</script")) throw new Error("topology would break out of its <script> tag");
 if (!tpl.includes("__TOPO__")) throw new Error("template is missing the __TOPO__ placeholder");
 
-const page = tpl.replace("__TOPO__", () => topo);
+const page = tpl.replace("__TOPO__", () => topoText);
 
 // the fragment carries its own <title>; a standalone document wants it in <head>
 const title = (page.match(/<title>([\s\S]*?)<\/title>/) || [, "Equal Earth True Size"])[1];

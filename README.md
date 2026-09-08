@@ -78,6 +78,35 @@ Shipped: `favicon.svg`, `favicon.ico` (16/32/48), `favicon-32.png`, `icon-192.pn
 Icon paths in the HTML are relative so the site also works from the `/equal-map/`
 project path.
 
+## Crimea
+
+Natural Earth's default admin-0 build follows de facto control and files the Crimean
+peninsula under Russia. This map follows the internationally recognised border
+(UN General Assembly resolution 68/262), so `build.mjs` moves the peninsula back to
+Ukraine before inlining the topology.
+
+The fix is applied at build time, not by editing `data/countries-50m.json`: the vendored
+file stays byte-identical to what world-atlas ships, and re-fetching it cannot silently
+undo the change. `reassignCrimea` decodes the quantised topology arcs directly — no
+extra dependency — finds the polygon in Russia's MultiPolygon whose bounds fall inside
+`[32.0, 44.0, 37.0, 46.6]`, and moves it into Ukraine's. It throws if that box does not
+match exactly one polygon, so a change upstream stops the build instead of passing
+quietly.
+
+Verified against the built page:
+
+| | before | after |
+|---|---|---|
+| Simferopol, Sevastopol, Kerch | Russia | Ukraine |
+| Ukraine | 570,137 km² | 597,118 km² |
+| Russia | 16,879,748 km² | 16,852,767 km² |
+
+Nothing else moves — those two countries change by exactly 26,981 km² each, the country
+count stays at 241, and the Perekop isthmus line disappears from the border mesh, so
+Crimea draws as continuous Ukrainian territory. The Kerch Strait boundary with Russia
+stays. Ukraine's real area is 603,550 km²; the remaining ~1% is 1:50m generalisation,
+which affects every country in the dataset equally.
+
 ## Sharing a view
 
 The address bar always holds the current state, so a view can be copied straight out of

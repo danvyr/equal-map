@@ -227,6 +227,18 @@ Pages site at your domain if you ever remove it from this repo.
 - **Area as drawn** is `path.area(moved) / (geoArea(country) · scale²)` — the projected
   screen area against what an undistorted equal-area rendering would give.
 
+A central difference only means something where the projection is smooth. On the
+antimeridian seam, a polyhedral fold or a singularity the two samples land on opposite
+sides and the derivative comes out enormous — which painted giant streaks across
+Waterman and a map-wide grey disc over Peirce. `smooth()` rejects those: for a smooth
+map the projected midpoint sits on the chord between the two samples to within ~1e-4 of
+the span, and across a break it does not, so that ratio is the test (threshold 0.05).
+The ellipse grid also avoids sampling at exactly ±180°, skips anything beyond
+`sx > 8` or `sy < 0.1` (nothing legitimate on a 15° grid exceeds ~3.9), and on a
+hemisphere projection skips the far side, which would otherwise mirror onto the visible
+disc. Measured afterwards: every non-polyhedral projection keeps all 132 grid points,
+Waterman drops the 8 that sit on folds, and Peirce's worst `sx` falls from 4.0e4 to 1.71.
+
 Verified against known values: Equal Earth returns areal scale 1.0000 at every point;
 Mercator returns sec²φ (2.00 at 45°, 14.93 at 75°) with ω = 0; equirectangular
 stretches sec φ east–west with no north–south change. The SVD ellipse orientation

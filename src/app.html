@@ -288,7 +288,7 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
 
   <header class="brand">
     <h1 class="wordmark">True <em>Size</em></h1>
-    <p class="tagline">No flat map keeps both <b>size</b> and <b>shape</b>. Drag a country across 20 projections and watch what each one gives up.</p>
+    <p class="tagline">No flat map keeps both <b>size</b> and <b>shape</b>. Drag a country across 25 projections and watch what each one gives up.</p>
     <div class="verdicts" id="verdicts"></div>
   </header>
 
@@ -344,6 +344,7 @@ section.projblk{border-bottom:none; border-top:1px solid var(--rule)}
 <script id="topo" type="application/json">__TOPO__</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4.0.0/dist/d3-geo-projection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo-polygon@1.12.1/dist/d3-geo-polygon.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
 (function(){
@@ -391,6 +392,8 @@ const PROJ = {
                 make:()=>d3.geoCylindricalEqualArea().parallel(0)},
   gallPeters:  {label:"Gall\u2013Peters", year:"1855", kind:"area",
                 make:()=>d3.geoCylindricalEqualArea().parallel(45)},
+  hoboDyer:    {label:"Hobo\u2013Dyer",  year:"2002", kind:"area",
+                make:()=>d3.geoCylindricalEqualArea().parallel(37.5)},
 
   mercator:    {label:"Mercator",     year:"1569", kind:"angle", make:()=>d3.geoMercator()},
   peirce:      {label:"Peirce Quincuncial", year:"1879", kind:"angle",
@@ -399,7 +402,20 @@ const PROJ = {
   naturalEarth:{label:"Natural Earth",year:"2012", kind:"none", make:()=>d3.geoNaturalEarth1()},
   robinson:    {label:"Robinson",     year:"1963", kind:"none", make:()=>d3.geoRobinson()},
   winkel3:     {label:"Winkel Tripel",year:"1921", kind:"none", make:()=>d3.geoWinkel3()},
-  equirect:    {label:"Equirectangular", year:"~100", kind:"none", make:()=>d3.geoEquirectangular()}
+  equirect:    {label:"Equirectangular", year:"~100", kind:"none", make:()=>d3.geoEquirectangular()},
+  vanDerGrinten:{label:"Van der Grinten", year:"1904", kind:"none", make:()=>d3.geoVanDerGrinten()},
+  // Polyhedral maps come from d3-geo-polygon, whose raw projections are not scaled to
+  // the unit sphere the way every other one here is — Dymaxion's is 10.14x. `unfolded`
+  // makes the readouts calibrate that away (see unitCal) so the numbers mean what they
+  // do everywhere else.
+  dymaxion:    {label:"Dymaxion",     year:"1943", kind:"none", unfolded:true,
+                areaNote:"Areas within 2%", make:()=>d3.geoAirocean()},
+  waterman:    {label:"Waterman butterfly", year:"1996", kind:"none", unfolded:true,
+                make:()=>d3.geoPolyhedralWaterman()},
+  // Not a globe: a picture of one. It foreshortens toward the rim, and only ever
+  // shows you half.
+  orthographic:{label:"Orthographic", year:"~200 BC", kind:"none", hemisphere:true,
+                make:()=>d3.geoOrthographic().rotate([-10,-22]).clipAngle(90)}
 };
 const GROUPS = [
   {kind:"area",  title:"True size",   note:"every area exact"},
@@ -529,7 +545,8 @@ function cutIntoLobes(f){
 const forLobes = f => straddlesLobe(f) ? cutIntoLobes(f) : f;
 
 /* ── distortion: Jacobian → singular values → Tissot ──────────────── */
-function distortionAt(proj, lon, lat){
+function distortionAt(proj, lon, lat, cal){
+  cal = cal || 1;
   const S = proj.scale(), d = 1e-4;
   const cs = Math.max(1e-6, Math.cos(lat*RAD));
   const dl = (d/cs)*DEG, dp = d*DEG;
@@ -540,9 +557,9 @@ function distortionAt(proj, lon, lat){
         c=(A[1]-B[1])/d/S, e=(C[1]-D[1])/d/S;
   const E=(a+e)/2, F=(a-e)/2, G=(c+b)/2, H=(c-b)/2;
   const Q=Math.hypot(E,H), Rr=Math.hypot(F,G);
-  const sx=Q+Rr, sy=Math.abs(Q-Rr);
-  const omega = 2*Math.asin(Math.min(1,(sx-sy)/(sx+sy||1)))*DEG;
-  return {sx, sy, omega, areal:Math.abs(a*e-b*c), phi:(Math.atan2(H,E)+Math.atan2(G,F))/2};
+  const k=Math.sqrt(cal), sx=(Q+Rr)/k, sy=Math.abs(Q-Rr)/k;
+  const omega = 2*Math.asin(Math.min(1,(sx-sy)/(sx+sy||1)))*DEG;   // a ratio: cal cancels
+  return {sx, sy, omega, areal:Math.abs(a*e-b*c)/cal, phi:(Math.atan2(H,E)+Math.atan2(G,F))/2};
 }
 
 /* ── theme-aware canvas colours ───────────────────────────────────── */
@@ -566,6 +583,29 @@ const buf = document.createElement("canvas");
 const bctx = buf.getContext("2d");
 let W=0, H=0, DPR=1, baseFit=null, projection=null, path=null, bpath=null;
 let needBase = true, raf = null;
+// Area readouts assume scale() means "radius of the unit sphere". That holds for every
+// projection here except the polyhedral ones, so those get a constant measured off the
+// whole-sphere area. It does not depend on scale, so it is computed once.
+let unitCal = {key:null, c:1};
+// On a hemisphere projection the far half simply is not there to measure.
+function onFarSide(pos){
+  if(!PROJ[state.projKey].hemisphere || !projection) return false;
+  const r = projection.rotate();
+  return d3.geoDistance([-r[0], -r[1]], pos) > Math.PI/2;
+}
+function calibration(){
+  if(!projection) return 1;
+  if(unitCal.key !== state.projKey){
+    let c = 1;
+    if(PROJ[state.projKey].unfolded){
+      const S = projection.scale();
+      c = Math.abs(d3.geoPath(projection).area(sphere)) / (4*Math.PI*S*S);
+      if(!isFinite(c) || c <= 0) c = 1;
+    }
+    unitCal = {key:state.projKey, c};
+  }
+  return unitCal.c;
+}
 let landCache = {key:null, geo:null};
 function landFor(){
   if(landCache.key !== state.projKey)
@@ -638,7 +678,7 @@ function drawTissot(){
   for(let lat=-75; lat<=75; lat+=15){
     for(let lon=-180; lon<180; lon+=30){
       const c = projection([lon,lat]); if(!c) continue;
-      const m = distortionAt(projection, lon, lat); if(!m) continue;
+      const m = distortionAt(projection, lon, lat, calibration()); if(!m) continue;
       const rx = r*m.sx, ry = r*m.sy;
       if(!isFinite(rx) || !isFinite(ry) || rx > 4000) continue;
       bctx.beginPath();
@@ -662,7 +702,7 @@ function drawPlates(){
     ctx.setLineDash([3,3]); ctx.lineWidth = 1; ctx.globalAlpha = .55; ctx.strokeStyle = p.color;
     ctx.beginPath(); path(ghostFor(p)); ctx.stroke();
     const a = projection(p.origin), b = projection(p.pos);
-    if(a && b){
+    if(a && b && !onFarSide(p.origin) && !onFarSide(p.pos)){
       ctx.setLineDash([2,4]); ctx.globalAlpha = .45; ctx.beginPath();
       ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
       ctx.beginPath(); ctx.arc(a[0],a[1],2,0,2*Math.PI); ctx.fillStyle = p.color; ctx.fill();
@@ -687,7 +727,7 @@ function drawPlates(){
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineJoin = "round";
   for(const p of ps){
-    const c = projection(p.pos); if(!c) continue;
+    const c = projection(p.pos); if(!c || onFarSide(p.pos)) continue;
     ctx.strokeStyle = C.paper; ctx.lineWidth = 3.8; ctx.strokeText(p.name, c[0], c[1]);
     ctx.fillStyle = p.color; ctx.fillText(p.name, c[0], c[1]);
   }
@@ -832,13 +872,19 @@ function buildCard(p){
 
 function syncPlateUI(p){
   if(!p.ui || !projection) return;
+  p.ui.root.style.setProperty("--pc", p.color);
+  if(onFarSide(p.pos)){
+    p.ui.now.textContent = coordText(p.pos) + "  \u2014 far side";
+    p.ui.area.textContent = p.ui.om.textContent = "\u2014";
+    p.ui.fArea.style.width = p.ui.fOm.style.width = "0%";
+    return;
+  }
   const S = projection.scale();
   const drawn = Math.abs(path.area(p.draw));
-  const ratio = drawn/(p.ster*S*S);
-  const m = distortionAt(projection, p.pos[0], p.pos[1]);
+  const ratio = drawn/(p.ster*S*S*calibration());
+  const m = distortionAt(projection, p.pos[0], p.pos[1], calibration());
   const om = m ? m.omega : 0;
 
-  p.ui.root.style.setProperty("--pc", p.color);
   p.ui.now.textContent = coordText(p.pos) + (p.spin ? "  ↻" + Math.round(p.spin) + "°" : "");
   p.ui.area.textContent = fmtRatio(ratio);
   p.ui.om.textContent = om.toFixed(1) + "°";
@@ -932,7 +978,7 @@ function setProjection(key){
   for(const b of projgrid.querySelectorAll(".proj")) b.setAttribute("aria-pressed", String(b.dataset.key===key));
   const P = PROJ[key];
   document.getElementById("verdicts").innerHTML =
-    chip(P.kind==="area", "Equal-area", "Areas wrong") +
+    chip(P.kind==="area", "Equal-area", P.areaNote || "Areas wrong") +
     chip(P.kind==="angle", "Conformal", "Shapes bent");
   for(const q of state.plates) updateGeo(q);
   state.transform = d3.zoomIdentity;
@@ -1132,7 +1178,7 @@ function updateHUD(pt){
   if(!g){ hudEl.classList.add("idle"); return; }
   hudEl.classList.remove("idle");
   hudCoord.textContent = coordText(g);
-  const m = distortionAt(projection, g[0], g[1]);
+  const m = distortionAt(projection, g[0], g[1], calibration());
   if(!m){ hudArea.textContent = hudOm.textContent = "—"; return; }
   hudArea.textContent = fmtRatio(m.areal);
   hudOm.textContent = m.omega.toFixed(1) + "°";

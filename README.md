@@ -17,15 +17,20 @@ what changes instead is **shape**. The app measures both, live.
 - Per country it reports **area as drawn** (screen area ÷ the equal-area expectation)
   and **max angular deformation ω** — the Tissot measure of how far right angles get
   bent — plus its true area in km².
-- 20 projections, grouped by the property each one keeps honest, so you can watch the
+- 25 projections, grouped by the property each one keeps honest, so you can watch the
   same countries balloon or bend as you switch:
   - **True size (equal-area)** — Equal Earth, Mollweide, Hammer, Briesemeister,
     Eckert II, Eckert IV, Eckert VI, Goode Homolosine, Goode interrupted,
-    Boggs Eumorphic interrupted, Sinusoidal, Bonne, Lambert cylindrical, Gall–Peters.
-    All report 1.00× for every country.
+    Boggs Eumorphic interrupted, Sinusoidal, Bonne, Lambert cylindrical, Gall–Peters,
+    Hobo–Dyer. All report 1.00× for every country.
   - **True angles (conformal)** — Mercator, Peirce Quincuncial. Both report ω = 0.0°
     for every country, and areas anywhere from 0.77× to 24×.
-  - **Compromise** — Natural Earth, Robinson, Winkel Tripel, Equirectangular.
+  - **Compromise** — Natural Earth, Robinson, Winkel Tripel, Equirectangular,
+    Van der Grinten, Dymaxion, Waterman butterfly, Orthographic.
+
+  Between them these cover every projection in [XKCD 977](https://xkcd.com/977/),
+  including the globe — which, as an orthographic view, turns out not to be the honest
+  answer the comic implies: it foreshortens toward the rim and only ever shows half.
 - The distortion-ellipse overlay draws Tissot indicatrices. On Equal Earth every
   ellipse has the *same area* and a different shape; on Mercator they are all circles
   of wildly different sizes. That single overlay is the whole argument.
@@ -230,6 +235,29 @@ equal-area projections return 1.00× on real country geometry — Greenland, Rus
 Antarctica, Indonesia, Chile — while Mercator returns 16.4× for Greenland and 23.7×
 for Antarctica. ω can exceed 90° (Bonne reaches 108°, Lambert cylindrical 111°), so the
 shape meter runs to its true 180° maximum rather than clamping at 90°.
+
+## Polyhedral projections and the scale convention
+
+Every area readout assumes `projection.scale()` means "radius of the unit sphere", so a
+region of Ω steradians covers Ω·S² pixels when drawn equal-area. That holds for all but
+the polyhedral projections: measured as `mapArea(Sphere) / (4π·S²)`, the constant comes
+out **1.0000** for Equal Earth, Mollweide and Hobo–Dyer, and exactly **π** for Mercator
+(which matches the analytic value, since its clipped sphere is a 2πS square) — but
+**10.14** for Dymaxion and **1.52** for Waterman, because d3-geo-polygon's polyhedral
+raws are not scaled that way.
+
+Projections flagged `unfolded` therefore divide their readouts by that constant, which
+is scale-invariant and so measured once. It is not a fudge: uncalibrated, Dymaxion
+reports every country at ~10×; calibrated, it reports 0.99–1.02 across Greenland,
+Russia, Brazil, Indonesia, Canada, Australia, Antarctica, Chile, Japan and India, which
+is Fuller's real ±2% area distortion. Waterman lands at 0.67–1.25.
+
+Dymaxion carries an explicit `areaNote` so its chip reads "Areas within 2%" rather than
+"Areas wrong" — the blunt label contradicted a readout of 1.00×.
+
+**Orthographic** is a hemisphere: the far half is not there to measure. Rather than
+report a country behind the globe as 0.00×, `onFarSide` suppresses its label, its leader
+line and its numbers, and the card says *far side*.
 
 ## Rebuilding the interrupted projections
 

@@ -58,8 +58,8 @@ const page = tpl.replace("__TOPO__", () => topoText);
 const title = (page.match(/<title>([\s\S]*?)<\/title>/) || [, "Equal Earth True Size"])[1];
 const body  = page.replace(/<title>[\s\S]*?<\/title>\s*/, "");
 
-const DESC = "Drag any country across 20 map projections \u2014 Equal Earth, Mercator, " +
-  "Peirce, Goode \u2014 and see what each one distorts: area, shape, or both.";
+const DESC = "Drag any country across 25 map projections \u2014 Equal Earth, Mercator, " +
+  "Dymaxion, Peirce, Goode \u2014 and see what each one distorts: area, shape, or both.";
 const SITE = "https://truesize.earth/";
 
 // icon paths stay relative so the site also works from the /equal-map/ project path
